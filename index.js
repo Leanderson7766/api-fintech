@@ -8,6 +8,7 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
+// ================= TOKEN =================
 async function getToken() {
  const r = await axios.post(
   'https://auth.v8sistema.com/oauth/token',
@@ -16,7 +17,8 @@ async function getToken() {
    client_id: process.env.V8_CLIENT_ID,
    audience: 'https://bff.v8sistema.com',
    username: process.env.V8_USER,
-   password: process.env.V8_PASS
+   password: process.env.V8_PASS,
+   scope: 'offline_access'
   }),
   { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
  )
@@ -25,12 +27,12 @@ async function getToken() {
 
 app.get('/', (req, res) => res.send('API ONLINE'))
 
-// ================= CONSENTIMENTO =================
+// ================= CONSENTIMENTO CLT =================
 app.post('/clt/consent', async (req, res) => {
  try {
   const token = await getToken()
   const r = await axios.post(
-   'https://bff.v8sistema.com/private-consignment/consent',
+   'https://bff.v8sistema.com/credito-privato-clt/consent',
    req.body,
    { headers: { Authorization: `Bearer ${token}` } }
   )
@@ -40,7 +42,7 @@ app.post('/clt/consent', async (req, res) => {
  }
 })
 
-// ================= TAXAS =================
+// ================= TAXAS DE SIMULAÇÃO CLT =================
 app.get('/clt/taxas', async (req, res) => {
  try {
   const token = await getToken()
@@ -54,7 +56,7 @@ app.get('/clt/taxas', async (req, res) => {
  }
 })
 
-// ================= SIMULAÇÃO =================
+// ================= SIMULAÇÃO CLT =================
 app.post('/clt/simular', async (req, res) => {
  try {
   const token = await getToken()
@@ -69,7 +71,7 @@ app.post('/clt/simular', async (req, res) => {
  }
 })
 
-// ================= PROPOSTA =================
+// ================= CRIAR PROPOSTA CLT =================
 app.post('/clt/proposta', async (req, res) => {
  try {
   const token = await getToken()
@@ -84,7 +86,7 @@ app.post('/clt/proposta', async (req, res) => {
  }
 })
 
-// ================= LISTAR OPERAÇÕES =================
+// ================= LISTAR OPERAÇÕES CLT =================
 app.get('/clt/operacoes', async (req, res) => {
  try {
   const token = await getToken()
