@@ -30,13 +30,23 @@ async function getToken() {
 app.get('/', (req, res) => res.send('API ONLINE'))
 
 // ================= CONSULTA CPF (ETAPA 1) =================
+// ================= CONSULTA CPF (ETAPA 1) =================
 app.post('/clt/consult', async (req, res) => {
  try {
 
   const token = await getToken()
 
   const payload = {
-   borrowerDocumentNumber: req.body.document_number
+   borrowerDocumentNumber: req.body.document_number,
+   gender: req.body.gender, // male / female
+   birthDate: req.body.birth_date, // yyyy-mm-dd
+   signerName: req.body.name,
+   signerEmail: req.body.email,
+   signerPhone: {
+    phoneNumber: req.body.phone_number,
+    countryCode: "55",
+    areaCode: req.body.area_code
+   }
   }
 
   const r = await axios.post(
@@ -57,7 +67,6 @@ app.post('/clt/consult', async (req, res) => {
   res.status(400).json(e.response?.data || { erro: true })
  }
 })
-
 // ================= TAXAS CLT =================
 app.get('/clt/taxas', async (req, res) => {
  try {
