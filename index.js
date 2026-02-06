@@ -29,14 +29,19 @@ async function getToken() {
 
 app.get('/', (req, res) => res.send('API ONLINE'))
 
-// ================= CONSULTA CPF (CONSULT_ID) =================
+// ================= CONSULTA CPF (ETAPA 1) =================
 app.post('/clt/consult', async (req, res) => {
  try {
+
   const token = await getToken()
+
+  const payload = {
+   borrowerDocumentNumber: req.body.document_number
+  }
 
   const r = await axios.post(
    'https://bff.v8sistema.com/private-consignment/consult',
-   req.body,
+   payload,
    {
     headers: {
      Authorization: `Bearer ${token}`,
@@ -48,13 +53,15 @@ app.post('/clt/consult', async (req, res) => {
   res.json(r.data)
 
  } catch (e) {
-  res.status(500).json(e.response?.data || { erro: true })
+  console.log(e.response?.data)
+  res.status(400).json(e.response?.data || { erro: true })
  }
 })
 
 // ================= TAXAS CLT =================
 app.get('/clt/taxas', async (req, res) => {
  try {
+
   const token = await getToken()
 
   const r = await axios.get(
@@ -74,6 +81,7 @@ app.get('/clt/taxas', async (req, res) => {
 // ================= SIMULAÇÃO CLT =================
 app.post('/clt/simular', async (req, res) => {
  try {
+
   const token = await getToken()
 
   const r = await axios.post(
@@ -90,13 +98,14 @@ app.post('/clt/simular', async (req, res) => {
   res.json(r.data)
 
  } catch (e) {
-  res.status(500).json(e.response?.data || { erro: true })
+  res.status(400).json(e.response?.data || { erro: true })
  }
 })
 
 // ================= CRIAR PROPOSTA =================
 app.post('/clt/proposta', async (req, res) => {
  try {
+
   const token = await getToken()
 
   const r = await axios.post(
@@ -113,13 +122,14 @@ app.post('/clt/proposta', async (req, res) => {
   res.json(r.data)
 
  } catch (e) {
-  res.status(500).json(e.response?.data || { erro: true })
+  res.status(400).json(e.response?.data || { erro: true })
  }
 })
 
 // ================= LISTAR OPERAÇÕES =================
 app.get('/clt/operacoes', async (req, res) => {
  try {
+
   const token = await getToken()
 
   const r = await axios.get(
@@ -133,7 +143,7 @@ app.get('/clt/operacoes', async (req, res) => {
   res.json(r.data)
 
  } catch (e) {
-  res.status(500).json(e.response?.data || { erro: true })
+  res.status(400).json(e.response?.data || { erro: true })
  }
 })
 
