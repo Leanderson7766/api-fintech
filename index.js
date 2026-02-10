@@ -67,34 +67,35 @@ app.post('/clt/consult', async (req, res) => {
  } catch (e) {
 
   const data = e.response?.data
-  console.log('ERRO CONSULT:', data)
+  console.log('CONSULT ERROR:', data)
 
-  // ===== CONSULTA JÁ EXISTE → BUSCA PELO ENDPOINT OFICIAL =====
+  // ===== CONSULTA JÁ EXISTE → RECUPERA =====
   if (data?.type === 'consult_already_exists_by_user_and_document_number') {
 
    const token = await getToken()
 
-   const r = await axios.get(
+   const list = await axios.get(
     'https://bff.v8sistema.com/private-consignment/consult',
     {
      headers: {
       Authorization: `Bearer ${token}`
      },
      params: {
-      search: req.body.document_number,
-      limit: 10,
+      limit: 50,
       page: 1,
+      search: req.body.document_number,
       provedor: 'QI'
      }
     }
    )
 
-   const found = r.data?.data?.[0]
+   const found = list.data?.data?.[0]
 
-   if (found?.id) {
+   if (found) {
     return res.json({
      consult_id: found.id,
-     reused: true
+     reused: true,
+     status: found.status
     })
    }
   }
