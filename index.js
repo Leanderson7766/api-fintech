@@ -20,17 +20,15 @@ async function getToken() {
    password: process.env.V8_PASS,
    scope: 'offline_access'
   }),
-  {
-   headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-  }
+  { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
  )
 
  return r.data.access_token
 }
 
-app.get('/', (req, res) => res.send('API ONLINE'))
+app.get('/', (_, res) => res.send('API ONLINE'))
 
-// ================= CONSULTA CPF =================
+// ================= CONSULTA =================
 app.post('/clt/consult', async (req, res) => {
  try {
 
@@ -67,7 +65,7 @@ app.post('/clt/consult', async (req, res) => {
   const data = e.response?.data
   console.log('ERRO CONSULT:', data)
 
-  // ===== CONSULTA JÁ EXISTE =====
+  // ===== SE JÁ EXISTIR CONSULTA =====
   if (data?.type === 'consult_already_exists_by_user_and_document_number') {
 
    const token = await getToken()
@@ -75,26 +73,31 @@ app.post('/clt/consult', async (req, res) => {
    const r = await axios.get(
     'https://bff.v8sistema.com/private-consignment/operation',
     {
-     headers: {
-      Authorization: `Bearer ${token}`
+     headers: { Authorization: `Bearer ${token}` },
+     params: {
+      page: 0,
+      size: 50
      }
     }
    )
 
    const cpf = req.body.document_number
 
-   const list = Array.isArray(r.data) ? r.data : r.data?.items || []
-
-   const found = list.find(i =>
-    i.borrower?.documentNumber === cpf
+   const found = r.data?.items?.find(o =>
+    o.borrower?.documentNumber === cpf
    )
 
-   if (found) {
+   if (found?.consultId) {
     return res.json({
      consult_id: found.consultId,
      reused: true
     })
    }
+
+   return res.status(400).json({
+    erro: true,
+    message: 'Consulta existe mas consultId não localizado'
+   })
   }
 
   return res.status(400).json(data || { erro: true })
@@ -102,16 +105,13 @@ app.post('/clt/consult', async (req, res) => {
 })
 
 // ================= TAXAS =================
-app.get('/clt/taxas', async (req, res) => {
+app.get('/clt/taxas', async (_, res) => {
  try {
-
   const token = await getToken()
 
   const r = await axios.get(
    'https://bff.v8sistema.com/private-consignment/simulation/configs',
-   {
-    headers: { Authorization: `Bearer ${token}` }
-   }
+   { headers: { Authorization: `Bearer ${token}` } }
   )
 
   res.json(r.data)
@@ -124,7 +124,6 @@ app.get('/clt/taxas', async (req, res) => {
 // ================= SIMULAÇÃO =================
 app.post('/clt/simular', async (req, res) => {
  try {
-
   const token = await getToken()
 
   const r = await axios.post(
@@ -148,7 +147,6 @@ app.post('/clt/simular', async (req, res) => {
 // ================= PROPOSTA =================
 app.post('/clt/proposta', async (req, res) => {
  try {
-
   const token = await getToken()
 
   const r = await axios.post(
@@ -172,7 +170,6 @@ app.post('/clt/proposta', async (req, res) => {
 // ================= OPERAÇÕES =================
 app.get('/clt/operacoes', async (req, res) => {
  try {
-
   const token = await getToken()
 
   const r = await axios.get(
@@ -190,11 +187,5 @@ app.get('/clt/operacoes', async (req, res) => {
  }
 })
 
-// ================= WEBHOOK =================
-app.post('/clt/webhook', (req, res) => {
- console.log('WEBHOOK CLT:', req.body)
- res.sendStatus(200)
-})
-
-const PORT = process.env.PORT || 3000
+const PORT = process.env.PORT || 10000
 app.listen(PORT, () => console.log('API rodando na porta', PORT))
