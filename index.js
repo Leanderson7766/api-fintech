@@ -62,14 +62,15 @@ app.post('/clt/consult', async (req, res) => {
    }
   )
 
-  return res.json(r.data)
+  res.json(r.data)
 
  } catch (e) {
 
-  const data = e.response?.data
+  const raw = e.response?.data
+  const data = typeof raw === 'string' ? JSON.parse(raw) : raw
+
   console.log('CONSULT ERROR:', data)
 
-  // ===== CONSULTA JÁ EXISTE → RECUPERA =====
   if (data?.type === 'consult_already_exists_by_user_and_document_number') {
 
    const token = await getToken()
