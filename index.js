@@ -26,10 +26,10 @@ async function getToken() {
    }
   }
  )
-
  return r.data.access_token
 }
 
+// ================= HOME =================
 app.get('/', (req, res) => res.send('API ONLINE'))
 
 // ================= CONSULTA CPF =================
@@ -65,63 +65,63 @@ app.post('/clt/consult', async (req, res) => {
   res.json(r.data)
 
  } catch (e) {
+  console.log('CONSULT ERROR:', e.response?.data)
+  res.status(400).json(e.response?.data || { erro: true })
+ }
+})
 
-  const raw = e.response?.data
-  const data = typeof raw === 'string' ? JSON.parse(raw) : raw
+// ================= NOVA ROTA: BUSCAR CONSULTA EXISTENTE =================
+app.post('/clt/consult/find', async (req, res) => {
+ try {
 
-  console.log('CONSULT ERROR:', data)
+  const token = await getToken()
 
-  if (data?.type === 'consult_already_exists_by_user_and_document_number') {
-
-   const token = await getToken()
-
-   const list = await axios.get(
-    'https://bff.v8sistema.com/private-consignment/consult',
-    {
-     headers: {
-      Authorization: `Bearer ${token}`
-     },
-     params: {
-      limit: 50,
-      page: 1,
-      search: req.body.document_number,
-      provedor: 'QI'
-     }
+  const r = await axios.get(
+   'https://bff.v8sistema.com/private-consignment/consult',
+   {
+    headers: {
+     Authorization: `Bearer ${token}`
+    },
+    params: {
+     limit: 50,
+     page: 1,
+     search: req.body.document_number,
+     provedor: 'QI'
     }
-   )
-
-   const found = list.data?.data?.[0]
-
-   if (found) {
-    return res.json({
-     consult_id: found.id,
-     reused: true,
-     status: found.status
-    })
    }
+  )
+
+  const found = r.data?.data?.[0]
+
+  if (!found) {
+   return res.status(404).json({
+    erro: true,
+    message: 'Consulta não encontrada'
+   })
   }
 
-  return res.status(400).json(data || { erro: true })
+  res.json({
+   consult_id: found.id,
+   status: found.status
+  })
+
+ } catch (e) {
+  console.log('FIND CONSULT ERROR:', e.response?.data)
+  res.status(400).json(e.response?.data || { erro: true })
  }
 })
 
 // ================= TAXAS =================
 app.get('/clt/taxas', async (req, res) => {
  try {
-
   const token = await getToken()
-
   const r = await axios.get(
    'https://bff.v8sistema.com/private-consignment/simulation/configs',
    {
-    headers: {
-     Authorization: `Bearer ${token}`
-    }
+    headers: { Authorization: `Bearer ${token}` }
    }
   )
-
   res.json(r.data)
-
  } catch (e) {
   res.status(500).json(e.response?.data || { erro: true })
  }
@@ -130,9 +130,7 @@ app.get('/clt/taxas', async (req, res) => {
 // ================= SIMULAÇÃO =================
 app.post('/clt/simular', async (req, res) => {
  try {
-
   const token = await getToken()
-
   const r = await axios.post(
    'https://bff.v8sistema.com/private-consignment/simulation',
    req.body,
@@ -143,9 +141,7 @@ app.post('/clt/simular', async (req, res) => {
     }
    }
   )
-
   res.json(r.data)
-
  } catch (e) {
   res.status(400).json(e.response?.data || { erro: true })
  }
@@ -154,9 +150,7 @@ app.post('/clt/simular', async (req, res) => {
 // ================= PROPOSTA =================
 app.post('/clt/proposta', async (req, res) => {
  try {
-
   const token = await getToken()
-
   const r = await axios.post(
    'https://bff.v8sistema.com/private-consignment/operation',
    req.body,
@@ -167,9 +161,7 @@ app.post('/clt/proposta', async (req, res) => {
     }
    }
   )
-
   res.json(r.data)
-
  } catch (e) {
   res.status(400).json(e.response?.data || { erro: true })
  }
@@ -178,21 +170,15 @@ app.post('/clt/proposta', async (req, res) => {
 // ================= OPERAÇÕES =================
 app.get('/clt/operacoes', async (req, res) => {
  try {
-
   const token = await getToken()
-
   const r = await axios.get(
    'https://bff.v8sistema.com/private-consignment/operation',
    {
-    headers: {
-     Authorization: `Bearer ${token}`
-    },
+    headers: { Authorization: `Bearer ${token}` },
     params: req.query
    }
   )
-
   res.json(r.data)
-
  } catch (e) {
   res.status(400).json(e.response?.data || { erro: true })
  }
