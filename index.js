@@ -21,9 +21,7 @@ async function getToken() {
    scope: 'offline_access'
   }),
   {
-   headers: {
-    'Content-Type': 'application/x-www-form-urlencoded'
-   }
+   headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
   }
  )
  return r.data.access_token
@@ -35,7 +33,6 @@ app.get('/', (req, res) => res.send('API ONLINE'))
 // ================= CONSULTA CPF =================
 app.post('/clt/consult', async (req, res) => {
  try {
-
   const token = await getToken()
 
   const payload = {
@@ -70,23 +67,26 @@ app.post('/clt/consult', async (req, res) => {
  }
 })
 
-// ================= NOVA ROTA: BUSCAR CONSULTA EXISTENTE =================
+// ================= BUSCAR CONSULTA EXISTENTE =================
 app.post('/clt/consult/find', async (req, res) => {
  try {
-
   const token = await getToken()
+
+  const now = new Date()
+  const startDate = req.body.startDate || new Date(now.getTime() - 30*24*60*60*1000).toISOString() // últimos 30 dias
+  const endDate = req.body.endDate || now.toISOString()
 
   const r = await axios.get(
    'https://bff.v8sistema.com/private-consignment/consult',
    {
-    headers: {
-     Authorization: `Bearer ${token}`
-    },
+    headers: { Authorization: `Bearer ${token}` },
     params: {
-     limit: 50,
-     page: 1,
+     limit: req.body.limit || 50,
+     page: req.body.page || 1,
      search: req.body.document_number,
-     provedor: 'QI'
+     provedor: req.body.provedor || 'QI',
+     startDate,
+     endDate
     }
    }
   )
@@ -96,17 +96,18 @@ app.post('/clt/consult/find', async (req, res) => {
   if (!found) {
    return res.status(404).json({
     erro: true,
-    message: 'Consulta não encontrada'
+    message: 'Nenhuma consulta encontrada neste período'
    })
   }
 
   res.json({
    consult_id: found.id,
-   status: found.status
+   status: found.status,
+   reused: true
   })
 
  } catch (e) {
-  console.log('FIND CONSULT ERROR:', e.response?.data)
+  console.log('FIND CONSULT ERROR:', e.response?.data || e.message)
   res.status(400).json(e.response?.data || { erro: true })
  }
 })
@@ -117,9 +118,7 @@ app.get('/clt/taxas', async (req, res) => {
   const token = await getToken()
   const r = await axios.get(
    'https://bff.v8sistema.com/private-consignment/simulation/configs',
-   {
-    headers: { Authorization: `Bearer ${token}` }
-   }
+   { headers: { Authorization: `Bearer ${token}` } }
   )
   res.json(r.data)
  } catch (e) {
