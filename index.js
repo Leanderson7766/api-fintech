@@ -29,8 +29,7 @@ async function getToken() {
 
 app.get('/', (req, res) => res.send('API ONLINE'))
 
-// ================= CONSULTA CPF (ETAPA 1) =================
-// ================= CONSULTA CPF (ETAPA 1) =================
+// ================= CONSULTA CPF =================
 app.post('/clt/consult', async (req, res) => {
  try {
 
@@ -64,19 +63,25 @@ app.post('/clt/consult', async (req, res) => {
 
  } catch (e) {
 
-  const data = e.response?.data;
+  const data = e.response?.data
 
-  // 👇 SE JÁ EXISTIR CONSULTA → REUTILIZA
-  if (data?.consult_id) {
+  console.log('ERRO CONSULT:', data)
+
+  // 👉 Reaproveita consulta existente
+  if (
+   data?.type === 'consult_already_exists_by_user_and_document_number' &&
+   data?.consult_id
+  ) {
    return res.json({
     consult_id: data.consult_id,
     reused: true
    })
   }
 
-  return res.status(400).json(data || { erro: true })
+  res.status(400).json(data || { erro: true })
  }
 })
+
 // ================= TAXAS CLT =================
 app.get('/clt/taxas', async (req, res) => {
  try {
@@ -97,7 +102,7 @@ app.get('/clt/taxas', async (req, res) => {
  }
 })
 
-// ================= SIMULAÇÃO CLT =================
+// ================= SIMULAÇÃO =================
 app.post('/clt/simular', async (req, res) => {
  try {
 
@@ -121,7 +126,7 @@ app.post('/clt/simular', async (req, res) => {
  }
 })
 
-// ================= CRIAR PROPOSTA =================
+// ================= PROPOSTA =================
 app.post('/clt/proposta', async (req, res) => {
  try {
 
