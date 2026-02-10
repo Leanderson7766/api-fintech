@@ -38,8 +38,8 @@ app.post('/clt/consult', async (req, res) => {
 
   const payload = {
    borrowerDocumentNumber: req.body.document_number,
-   gender: req.body.gender, // male / female
-   birthDate: req.body.birth_date, // yyyy-mm-dd
+   gender: req.body.gender,
+   birthDate: req.body.birth_date,
    signerName: req.body.name,
    signerEmail: req.body.email,
    signerPhone: {
@@ -60,11 +60,21 @@ app.post('/clt/consult', async (req, res) => {
    }
   )
 
-  res.json(r.data)
+  return res.json(r.data)
 
  } catch (e) {
-  console.log(e.response?.data)
-  res.status(400).json(e.response?.data || { erro: true })
+
+  const data = e.response?.data;
+
+  // 👇 SE JÁ EXISTIR CONSULTA → REUTILIZA
+  if (data?.consult_id) {
+   return res.json({
+    consult_id: data.consult_id,
+    reused: true
+   })
+  }
+
+  return res.status(400).json(data || { erro: true })
  }
 })
 // ================= TAXAS CLT =================
