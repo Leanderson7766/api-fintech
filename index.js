@@ -67,7 +67,7 @@ app.post('/clt/consult', async (req, res) => {
   const data = e.response?.data
   console.log('ERRO CONSULT:', data)
 
-  // ========= CONSULTA JÁ EXISTE =========
+  // ===== CONSULTA JÁ EXISTE =====
   if (data?.type === 'consult_already_exists_by_user_and_document_number') {
 
    const token = await getToken()
@@ -83,7 +83,9 @@ app.post('/clt/consult', async (req, res) => {
 
    const cpf = req.body.document_number
 
-   const found = r.data?.items?.find(i =>
+   const list = Array.isArray(r.data) ? r.data : r.data?.items || []
+
+   const found = list.find(i =>
     i.borrower?.documentNumber === cpf
    )
 
