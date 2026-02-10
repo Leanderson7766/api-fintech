@@ -24,6 +24,7 @@ async function getToken() {
    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
   }
  )
+
  return r.data.access_token
 }
 
@@ -64,25 +65,41 @@ app.post('/clt/consult', async (req, res) => {
  } catch (e) {
 
   const data = e.response?.data
-
   console.log('ERRO CONSULT:', data)
 
-  // 👉 Reaproveita consulta existente
-  if (
-   data?.type === 'consult_already_exists_by_user_and_document_number' &&
-   data?.consult_id
-  ) {
-   return res.json({
-    consult_id: data.consult_id,
-    reused: true
-   })
+  // ========= CONSULTA JÁ EXISTE =========
+  if (data?.type === 'consult_already_exists_by_user_and_document_number') {
+
+   const token = await getToken()
+
+   const r = await axios.get(
+    'https://bff.v8sistema.com/private-consignment/operation',
+    {
+     headers: {
+      Authorization: `Bearer ${token}`
+     }
+    }
+   )
+
+   const cpf = req.body.document_number
+
+   const found = r.data?.items?.find(i =>
+    i.borrower?.documentNumber === cpf
+   )
+
+   if (found) {
+    return res.json({
+     consult_id: found.consultId,
+     reused: true
+    })
+   }
   }
 
-  res.status(400).json(data || { erro: true })
+  return res.status(400).json(data || { erro: true })
  }
 })
 
-// ================= TAXAS CLT =================
+// ================= TAXAS =================
 app.get('/clt/taxas', async (req, res) => {
  try {
 
@@ -150,7 +167,7 @@ app.post('/clt/proposta', async (req, res) => {
  }
 })
 
-// ================= LISTAR OPERAÇÕES =================
+// ================= OPERAÇÕES =================
 app.get('/clt/operacoes', async (req, res) => {
  try {
 
