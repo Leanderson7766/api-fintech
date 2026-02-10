@@ -62,11 +62,44 @@ app.post('/clt/consult', async (req, res) => {
    }
   )
 
-  res.json(r.data)
+  return res.json(r.data)
 
  } catch (e) {
-  console.log(e.response?.data)
-  res.status(400).json(e.response?.data || { erro: true })
+
+  const data = e.response?.data
+  console.log('ERRO CONSULT:', data)
+
+  // ===== CONSULTA JÁ EXISTE → BUSCA PELO ENDPOINT OFICIAL =====
+  if (data?.type === 'consult_already_exists_by_user_and_document_number') {
+
+   const token = await getToken()
+
+   const r = await axios.get(
+    'https://bff.v8sistema.com/private-consignment/consult',
+    {
+     headers: {
+      Authorization: `Bearer ${token}`
+     },
+     params: {
+      search: req.body.document_number,
+      limit: 10,
+      page: 1,
+      provedor: 'QI'
+     }
+    }
+   )
+
+   const found = r.data?.data?.[0]
+
+   if (found?.id) {
+    return res.json({
+     consult_id: found.id,
+     reused: true
+    })
+   }
+  }
+
+  return res.status(400).json(data || { erro: true })
  }
 })
 
