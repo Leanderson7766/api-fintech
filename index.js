@@ -20,15 +20,19 @@ async function getToken() {
    password: process.env.V8_PASS,
    scope: 'offline_access'
   }),
-  { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+  {
+   headers: {
+    'Content-Type': 'application/x-www-form-urlencoded'
+   }
+  }
  )
 
  return r.data.access_token
 }
 
-app.get('/', (_, res) => res.send('API ONLINE'))
+app.get('/', (req, res) => res.send('API ONLINE'))
 
-// ================= CONSULTA =================
+// ================= CONSULTA CPF =================
 app.post('/clt/consult', async (req, res) => {
  try {
 
@@ -58,60 +62,27 @@ app.post('/clt/consult', async (req, res) => {
    }
   )
 
-  return res.json(r.data)
+  res.json(r.data)
 
  } catch (e) {
-
-  const data = e.response?.data
-  console.log('ERRO CONSULT:', data)
-
-  // ===== SE JÁ EXISTIR CONSULTA =====
-  if (data?.type === 'consult_already_exists_by_user_and_document_number') {
-
-   const token = await getToken()
-
-   const r = await axios.get(
-    'https://bff.v8sistema.com/private-consignment/operation',
-    {
-     headers: { Authorization: `Bearer ${token}` },
-     params: {
-      page: 0,
-      size: 50
-     }
-    }
-   )
-
-   const cpf = req.body.document_number
-
-   const found = r.data?.items?.find(o =>
-    o.borrower?.documentNumber === cpf
-   )
-
-   if (found?.consultId) {
-    return res.json({
-     consult_id: found.consultId,
-     reused: true
-    })
-   }
-
-   return res.status(400).json({
-    erro: true,
-    message: 'Consulta existe mas consultId não localizado'
-   })
-  }
-
-  return res.status(400).json(data || { erro: true })
+  console.log(e.response?.data)
+  res.status(400).json(e.response?.data || { erro: true })
  }
 })
 
 // ================= TAXAS =================
-app.get('/clt/taxas', async (_, res) => {
+app.get('/clt/taxas', async (req, res) => {
  try {
+
   const token = await getToken()
 
   const r = await axios.get(
    'https://bff.v8sistema.com/private-consignment/simulation/configs',
-   { headers: { Authorization: `Bearer ${token}` } }
+   {
+    headers: {
+     Authorization: `Bearer ${token}`
+    }
+   }
   )
 
   res.json(r.data)
@@ -124,6 +95,7 @@ app.get('/clt/taxas', async (_, res) => {
 // ================= SIMULAÇÃO =================
 app.post('/clt/simular', async (req, res) => {
  try {
+
   const token = await getToken()
 
   const r = await axios.post(
@@ -147,6 +119,7 @@ app.post('/clt/simular', async (req, res) => {
 // ================= PROPOSTA =================
 app.post('/clt/proposta', async (req, res) => {
  try {
+
   const token = await getToken()
 
   const r = await axios.post(
@@ -170,12 +143,15 @@ app.post('/clt/proposta', async (req, res) => {
 // ================= OPERAÇÕES =================
 app.get('/clt/operacoes', async (req, res) => {
  try {
+
   const token = await getToken()
 
   const r = await axios.get(
    'https://bff.v8sistema.com/private-consignment/operation',
    {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+     Authorization: `Bearer ${token}`
+    },
     params: req.query
    }
   )
@@ -185,6 +161,12 @@ app.get('/clt/operacoes', async (req, res) => {
  } catch (e) {
   res.status(400).json(e.response?.data || { erro: true })
  }
+})
+
+// ================= WEBHOOK =================
+app.post('/clt/webhook', (req, res) => {
+ console.log('WEBHOOK CLT:', req.body)
+ res.sendStatus(200)
 })
 
 const PORT = process.env.PORT || 10000
