@@ -144,6 +144,68 @@ app.post('/clt/consult/authorize', async (req, res) => {
   res.status(400).json(e.response?.data || { erro: true })
  }
 })
+// ================= OBTER MARGEM DISPONÍVEL =================
+app.post('/clt/consult/margem', async (req, res) => {
+    try {
+        const token = await getToken();
+        const documentNumber = req.body.document_number;
+
+        if (!documentNumber) {
+            return res.status(400).json({ erro: true, message: 'document_number é obrigatório' });
+        }
+
+        // Datas para busca (últimos 30 dias por padrão)
+        const now = new Date();
+        const startDate = req.body.startDate || new Date(now.getTime() - 30*24*60*60*1000).toISOString();
+        const endDate = req.body.endDate || now.toISOString();
+
+        const r = await axios.get(
+            'https://bff.v8sistema.com/private-consignment/consult',
+            {
+                headers: { Authorization: `Bearer ${token}` },
+                params: {
+                    search: documentNumber,
+                    startDate,
+                    endDate,
+                    limit: req.body.limit || 50,
+                    page: req.body.page || 1,
+                    provedor: req.body.provedor || 'QI'
+                }
+            }
+        );
+
+        const found = r.data?.data?.find(item => item.documentNumber === documentNumber);
+
+        if (!found) {
+            return res.status(404).json({
+                erro: true,
+                message: 'Nenhum termo de consentimento encontrado para este CPF neste período'
+            });
+        }
+
+        res.json({
+            consult_id: found.id,
+            status: found.status,
+            status_traduzido: (() => {
+                switch (found.status) {
+                    case "WAITING_CONSENT": return "Aguardando aceite do termo";
+                    case "CONSENT_APPROVED": return "Termo aceito";
+                    case "WAITING_CONSULT": return "Consulta em processamento";
+                    case "WAITING_CREDIT_ANALYSIS": return "Aguardando análise de crédito";
+                    case "SUCCESS": return "Consulta concluída com sucesso";
+                    case "FAILED": return "Consulta falhou";
+                    case "REJECTED": return "Consulta rejeitada";
+                    default: return "Status desconhecido";
+                }
+            })(),
+            availableMarginValue: found.availableMarginValue
+        });
+
+    } catch (e) {
+        console.log('MARGEM CONSULT ERROR:', e.response?.data || e.message);
+        res.status(400).json(e.response?.data || { erro: true });
+    }
+});
 
 // ================= TAXAS =================
 app.get('/clt/taxas', async (req, res) => {
