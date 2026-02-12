@@ -30,7 +30,7 @@ async function getToken() {
 // ================= HOME =================
 app.get('/', (req, res) => res.send('API ONLINE'))
 
-// ================= CONSULTA CPF =================
+// ================= GERAR TERMO =================
 app.post('/clt/consult', async (req, res) => {
  try {
   const token = await getToken()
@@ -62,18 +62,17 @@ app.post('/clt/consult', async (req, res) => {
   res.json(r.data)
 
  } catch (e) {
-  console.log('CONSULT ERROR:', e.response?.data)
   res.status(400).json(e.response?.data || { erro: true })
  }
 })
 
-// ================= BUSCAR CONSULTA EXISTENTE =================
+// ================= BUSCAR CONSULTA =================
 app.post('/clt/consult/find', async (req, res) => {
  try {
   const token = await getToken()
 
   const now = new Date()
-  const startDate = req.body.startDate || new Date(now.getTime() - 30*24*60*60*1000).toISOString() // últimos 30 dias
+  const startDate = req.body.startDate || new Date(now.getTime() - 30*24*60*60*1000).toISOString()
   const endDate = req.body.endDate || now.toISOString()
 
   const r = await axios.get(
@@ -81,10 +80,10 @@ app.post('/clt/consult/find', async (req, res) => {
    {
     headers: { Authorization: `Bearer ${token}` },
     params: {
-     limit: req.body.limit || 50,
-     page: req.body.page || 1,
+     limit: 50,
+     page: 1,
      search: req.body.document_number,
-     provedor: req.body.provedor || 'QI',
+     provedor: 'QI',
      startDate,
      endDate
     }
@@ -93,196 +92,127 @@ app.post('/clt/consult/find', async (req, res) => {
 
   const found = r.data?.data?.[0]
 
-  if (!found) {
-   return res.status(404).json({
-    erro: true,
-    message: 'Nenhuma consulta encontrada neste período'
-   })
-  }
+  if (!found) return res.status(404).json({ erro:true })
 
   res.json({
    consult_id: found.id,
-   status: found.status,
-   reused: true
+   status: found.status
   })
 
  } catch (e) {
-  console.log('FIND CONSULT ERROR:', e.response?.data || e.message)
   res.status(400).json(e.response?.data || { erro: true })
  }
 })
 
-// ================= AUTORIZAR / REENVIAR TERMO DE CONSENTIMENTO =================
+// ================= AUTORIZAR TERMO =================
 app.post('/clt/consult/authorize', async (req, res) => {
  try {
   const token = await getToken()
   const consultId = req.body.consult_id
 
-  if (!consultId) {
-   return res.status(400).json({ erro: true, message: 'consult_id é obrigatório' })
-  }
-
   const r = await axios.post(
    `https://bff.v8sistema.com/private-consignment/consult/${consultId}/authorize`,
-   {}, // corpo vazio
-   {
-    headers: {
-     Authorization: `Bearer ${token}`,
-     'Content-Type': 'application/json'
-    }
-   }
+   {},
+   { headers:{ Authorization:`Bearer ${token}` }}
   )
 
   res.json({
-   message: 'Link de consentimento enviado / autorizado',
    consult_id: consultId,
-   status: r.data?.status || 'WAITING_CONSENT'
+   status: 'WAITING_CONSENT'
   })
 
  } catch (e) {
-  console.log('AUTHORIZE CONSULT ERROR:', e.response?.data || e.message)
-  res.status(400).json(e.response?.data || { erro: true })
+  res.status(400).json(e.response?.data || { erro:true })
  }
 })
-// ================= OBTER MARGEM DISPONÍVEL =================
+
+// ================= OBTER MARGEM =================
 app.post('/clt/consult/margem', async (req, res) => {
-    try {
-        const token = await getToken();
-        const documentNumber = req.body.document_number;
-
-        if (!documentNumber) {
-            return res.status(400).json({ erro: true, message: 'document_number é obrigatório' });
-        }
-
-        // Datas para busca (últimos 30 dias por padrão)
-        const now = new Date();
-        const startDate = req.body.startDate || new Date(now.getTime() - 30*24*60*60*1000).toISOString();
-        const endDate = req.body.endDate || now.toISOString();
-
-        const r = await axios.get(
-            'https://bff.v8sistema.com/private-consignment/consult',
-            {
-                headers: { Authorization: `Bearer ${token}` },
-                params: {
-                    search: documentNumber,
-                    startDate,
-                    endDate,
-                    limit: req.body.limit || 50,
-                    page: req.body.page || 1,
-                    provedor: req.body.provedor || 'QI'
-                }
-            }
-        );
-
-        const found = r.data?.data?.find(item => item.documentNumber === documentNumber);
-
-        if (!found) {
-            return res.status(404).json({
-                erro: true,
-                message: 'Nenhum termo de consentimento encontrado para este CPF neste período'
-            });
-        }
-
-        res.json({
-            consult_id: found.id,
-            status: found.status,
-            status_traduzido: (() => {
-                switch (found.status) {
-                    case "WAITING_CONSENT": return "Aguardando aceite do termo";
-                    case "CONSENT_APPROVED": return "Termo aceito";
-                    case "WAITING_CONSULT": return "Consulta em processamento";
-                    case "WAITING_CREDIT_ANALYSIS": return "Aguardando análise de crédito";
-                    case "SUCCESS": return "Consulta concluída com sucesso";
-                    case "FAILED": return "Consulta falhou";
-                    case "REJECTED": return "Consulta rejeitada";
-                    default: return "Status desconhecido";
-                }
-            })(),
-            availableMarginValue: found.availableMarginValue
-        });
-
-    } catch (e) {
-        console.log('MARGEM CONSULT ERROR:', e.response?.data || e.message);
-        res.status(400).json(e.response?.data || { erro: true });
-    }
-});
-
-// ================= TAXAS =================
-app.get('/clt/taxas', async (req, res) => {
  try {
   const token = await getToken()
+  const cpf = req.body.document_number
+
+  const now = new Date()
+  const startDate = new Date(now.getTime() - 30*24*60*60*1000).toISOString()
+  const endDate = now.toISOString()
+
   const r = await axios.get(
-   'https://bff.v8sistema.com/private-consignment/simulation/configs',
-   { headers: { Authorization: `Bearer ${token}` } }
+   'https://bff.v8sistema.com/private-consignment/consult',
+   {
+    headers:{ Authorization:`Bearer ${token}` },
+    params:{
+     search: cpf,
+     startDate,
+     endDate,
+     limit:50,
+     page:1,
+     provedor:'QI'
+    }
+   }
   )
-  res.json(r.data)
- } catch (e) {
-  res.status(500).json(e.response?.data || { erro: true })
+
+  const found = r.data?.data?.[0]
+
+  if(!found) return res.status(404).json({ erro:true })
+
+  res.json({
+   consult_id: found.id,
+   status: found.status,
+   availableMarginValue: found.availableMarginValue
+  })
+
+ } catch(e){
+  res.status(400).json(e.response?.data || {erro:true})
  }
+})
+
+// ================= TAXAS =================
+app.get('/clt/taxas', async (req,res)=>{
+ const token = await getToken()
+ const r = await axios.get(
+  'https://bff.v8sistema.com/private-consignment/simulation/configs',
+  { headers:{Authorization:`Bearer ${token}`}}
+ )
+ res.json(r.data)
 })
 
 // ================= SIMULAÇÃO =================
-app.post('/clt/simular', async (req, res) => {
- try {
-  const token = await getToken()
-  const r = await axios.post(
-   'https://bff.v8sistema.com/private-consignment/simulation',
-   req.body,
-   {
-    headers: {
-     Authorization: `Bearer ${token}`,
-     'Content-Type': 'application/json'
-    }
-   }
-  )
-  res.json(r.data)
- } catch (e) {
-  res.status(400).json(e.response?.data || { erro: true })
- }
+app.post('/clt/simular', async(req,res)=>{
+ const token = await getToken()
+ const r = await axios.post(
+  'https://bff.v8sistema.com/private-consignment/simulation',
+  req.body,
+  { headers:{Authorization:`Bearer ${token}`}}
+ )
+ res.json(r.data)
 })
 
 // ================= PROPOSTA =================
-app.post('/clt/proposta', async (req, res) => {
- try {
-  const token = await getToken()
-  const r = await axios.post(
-   'https://bff.v8sistema.com/private-consignment/operation',
-   req.body,
-   {
-    headers: {
-     Authorization: `Bearer ${token}`,
-     'Content-Type': 'application/json'
-    }
-   }
-  )
-  res.json(r.data)
- } catch (e) {
-  res.status(400).json(e.response?.data || { erro: true })
- }
+app.post('/clt/proposta', async(req,res)=>{
+ const token = await getToken()
+ const r = await axios.post(
+  'https://bff.v8sistema.com/private-consignment/operation',
+  req.body,
+  { headers:{Authorization:`Bearer ${token}`}}
+ )
+ res.json(r.data)
 })
 
 // ================= OPERAÇÕES =================
-app.get('/clt/operacoes', async (req, res) => {
- try {
-  const token = await getToken()
-  const r = await axios.get(
-   'https://bff.v8sistema.com/private-consignment/operation',
-   {
-    headers: { Authorization: `Bearer ${token}` },
-    params: req.query
-   }
-  )
-  res.json(r.data)
- } catch (e) {
-  res.status(400).json(e.response?.data || { erro: true })
- }
+app.get('/clt/operacoes', async(req,res)=>{
+ const token = await getToken()
+ const r = await axios.get(
+  'https://bff.v8sistema.com/private-consignment/operation',
+  { headers:{Authorization:`Bearer ${token}`}, params:req.query }
+ )
+ res.json(r.data)
 })
 
 // ================= WEBHOOK =================
-app.post('/clt/webhook', (req, res) => {
- console.log('WEBHOOK CLT:', req.body)
+app.post('/clt/webhook',(req,res)=>{
+ console.log(req.body)
  res.sendStatus(200)
 })
 
 const PORT = process.env.PORT || 10000
-app.listen(PORT, () => console.log('API rodando na porta', PORT))
+app.listen(PORT, ()=>console.log('API ONLINE',PORT))
